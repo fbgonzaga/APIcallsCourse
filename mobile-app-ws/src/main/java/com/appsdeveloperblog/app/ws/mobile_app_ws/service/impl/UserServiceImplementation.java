@@ -1,12 +1,13 @@
 package com.appsdeveloperblog.app.ws.mobile_app_ws.service.impl;
 
-import com.appsdeveloperblog.app.ws.mobile_app_ws.io.repository.UserRepository;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.io.entity.UserEntity;
+import com.appsdeveloperblog.app.ws.mobile_app_ws.io.repository.UserRepository;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.service.UserService;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.shared.Utils;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.shared.dto.UserDto;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -46,10 +47,32 @@ public class UserServiceImplementation implements UserService {
         return returnValue;
     }
 
+    @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserEntity userEntity = userRepository.findByEmail(username);
         if (userEntity == null) throw new UsernameNotFoundException(username);
 
         return new User(username, userEntity.getEncryptedPassword(), new ArrayList<>());
+    }
+
+    @Override
+    public UserDto getUser(String email) {
+        UserEntity userEntity = userRepository.findByEmail(email);
+        if (userEntity == null) throw new UsernameNotFoundException(email);
+
+        UserDto userDto = new UserDto();
+        BeanUtils.copyProperties(userEntity, userDto);
+        return userDto;
+
+    }
+
+    @Override
+    public UserDto getUserByUserId(String userId) {
+        UserEntity userEntity = userRepository.findByUserId(userId);
+        if (userEntity == null) throw new UsernameNotFoundException(userId);
+
+        UserDto userDto = new UserDto();
+        BeanUtils.copyProperties(userEntity, userDto);
+        return userDto;
     }
 }

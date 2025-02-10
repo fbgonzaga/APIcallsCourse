@@ -1,11 +1,13 @@
 package com.appsdeveloperblog.app.ws.mobile_app_ws.security;
 
+import com.appsdeveloperblog.app.ws.mobile_app_ws.SpringApplicationContext;
+import com.appsdeveloperblog.app.ws.mobile_app_ws.service.UserService;
+import com.appsdeveloperblog.app.ws.mobile_app_ws.shared.dto.UserDto;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.ui.model.request.UserLoginRequestModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,23 +34,25 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest req, HttpServletResponse res)
         throws AuthenticationException {
+
+        UserLoginRequestModel creds = null;
         try {
-
-            UserLoginRequestModel creds = new ObjectMapper().readValue(req.getInputStream(), UserLoginRequestModel.class);
-
-            return getAuthenticationManager().authenticate(
-                new UsernamePasswordAuthenticationToken(creds.getEmail(), creds.getPassword(), new ArrayList<>()));
-
+            creds = new ObjectMapper().readValue(req.getInputStream(), UserLoginRequestModel.class);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        Authentication authentication = getAuthenticationManager().authenticate(
+            new UsernamePasswordAuthenticationToken(creds.getEmail(), creds.getPassword(), new ArrayList<>()));
+
+        return authentication;
     }
 
     @Override
     protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain,
-                                            Authentication auth) throws IOException, ServletException {
+                                            Authentication auth) {
 
-        byte[] secretKeyBytes = Base64.getEncoder().encode(SecurityConstants.TOKEN_SECRET.getBytes());
+        byte[] secretKeyBytes = Base64.getEncoder().encode(SecurityConstants.getTokenSecret().getBytes());
         SecretKey secretKey = new SecretKeySpec(secretKeyBytes, SignatureAlgorithm.HS512.getJcaName());
         Instant now = Instant.now();
 
@@ -59,6 +63,10 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
                 Date.from(now.plusMillis(SecurityConstants.EXPIRATION_TIME)))
             .setIssuedAt(Date.from(now)).signWith(secretKey, SignatureAlgorithm.HS512).compact();
 
+        UserService userService = (UserService) SpringApplicationContext.getBean("userServiceImplementation");
+        UserDto userDto = userService.getUser(userName);
+
         res.addHeader(SecurityConstants.HEADER_STRING, SecurityConstants.TOKEN_PREFIX + token);
+        res.addHeader("UserId", userDto.getUserId());
     }
 }

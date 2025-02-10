@@ -1,8 +1,8 @@
 package com.appsdeveloperblog.app.ws.mobile_app_ws.security;
 
+import com.appsdeveloperblog.app.ws.mobile_app_ws.exceptions.AppExceptionsHandler;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.io.repository.UserRepository;
 import com.appsdeveloperblog.app.ws.mobile_app_ws.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,14 +28,17 @@ public class WebSecurity {
     private final UserService userDetailsService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final UserRepository userRepository;
+    private final AppExceptionsHandler appExceptionsHandler;
 
     public WebSecurity(UserService userDetailsService,
                        BCryptPasswordEncoder bCryptPasswordEncoder,
-                       UserRepository userRepository
+                       UserRepository userRepository,
+                       AppExceptionsHandler appExceptionsHandler
     ) {
         this.userDetailsService = userDetailsService;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.userRepository = userRepository;
+        this.appExceptionsHandler = appExceptionsHandler;
     }
 
 
@@ -49,6 +52,7 @@ public class WebSecurity {
         AuthenticationManager authenticationManager = authenticationManagerBuilder.build();
 
         http
+
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf((csrf) -> csrf.disable())
             .authorizeHttpRequests((authz) -> authz
@@ -66,7 +70,6 @@ public class WebSecurity {
                 .permitAll()
                 //.antMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
-
             .addFilter(getAuthenticationFilter(authenticationManager))
             .addFilter(new AuthorizationFilter(authenticationManager, userRepository))
             .authenticationManager(authenticationManager)
@@ -77,7 +80,6 @@ public class WebSecurity {
 
         return http.build();
     }
-
 
     protected AuthenticationFilter getAuthenticationFilter(AuthenticationManager authenticationManager) throws Exception {
         final AuthenticationFilter filter = new AuthenticationFilter(authenticationManager);
